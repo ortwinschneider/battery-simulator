@@ -125,13 +125,7 @@ public class BatterySimulator {
         speedEnergylookupTable.put(250.0, 162.0);
 
         for (int i = 0; i < batteryCount; i++) {
-            currentBatteryCapacity.put(i+1, batteryCapacity);
-            currentDrivingDistance.put(i+1, 0.0);
-            currentBatteryVoltage.put(i+1, batteryVoltageMax);
-            currentSpeed.put(i+1, wheelSpeedMax * 0.5);
-            currentAmbientTemperature.put(i+1, 18.3);
-            currentBatteryTemperature.put(i+1,25.4);
-            anomalyVoltageDropEnabled.put(i+1, false);
+            initializeBatterySimulationData(i+1);
         }
 
         scheduler = Executors.newScheduledThreadPool(batteryCount);
@@ -139,6 +133,18 @@ public class BatterySimulator {
             final int batteryId = i + 1;
             scheduler.scheduleAtFixedRate(() -> simulateDrivingElectricVehicle(batteryId), 0, dataGenIntervall, TimeUnit.SECONDS);
         }
+    }
+
+    private void initializeBatterySimulationData(int batteryId){
+        System.out.println("Initialize battery simulation for batteryId: "+batteryId);
+
+        currentBatteryCapacity.put(batteryId, batteryCapacity);
+        currentDrivingDistance.put(batteryId, 0.0);
+        currentBatteryVoltage.put(batteryId, batteryVoltageMax);
+        currentSpeed.put(batteryId, wheelSpeedMax * 0.5);
+        currentAmbientTemperature.put(batteryId, 18.3);
+        currentBatteryTemperature.put(batteryId,25.4);
+        anomalyVoltageDropEnabled.put(batteryId, false);
     }
 
     void onStart(@Observes StartupEvent event) {
@@ -235,6 +241,15 @@ public class BatterySimulator {
         } catch (MqttException e) {
             e.printStackTrace();
         }
+
+        if(stateOfHealth <= 0.5 || currentStateOfCharge <= 0.05){
+            System.out.println("INITIALIZING SIMULATION DATA...");
+            System.out.println("stateOfHealth: "+stateOfHealth);
+            System.out.println("currentStateOfCharge: "+currentStateOfCharge);
+            this.initializeBatterySimulationData(batteryId);
+            batteryDataSimulation.initializeSimulationData();
+        }
+
     }
 
     // The function is returning kwh

@@ -24,6 +24,13 @@ public class BatteryDataSimulation {
     private double stateOfHealth = 100.0; // Start at 100% SOH
     private double voltage = NOMINAL_VOLTAGE;
 
+    public void initializeSimulationData(){
+        this.batteryTemperature = INITIAL_TEMPERATURE;
+        this.inThermalRunaway = false;
+        this.stateOfHealth = 100.0;
+        this.voltage = NOMINAL_VOLTAGE;
+    }
+
     public void simulateBatteryData(double current, int timeInterval, double stateOfCharge) {
 
         if (!inThermalRunaway) {
