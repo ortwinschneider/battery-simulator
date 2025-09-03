@@ -71,11 +71,11 @@ public class BatterySimulator {
     private ConcurrentHashMap<Integer, Double> currentBatteryTemperature;
     private ConcurrentHashMap<Integer, Double> currentSpeed;
     private NavigableMap<Double, Double> speedEnergylookupTable;
-    private ConcurrentHashMap<Integer, Boolean> anomalyVoltageDropEnabled;
+    private ConcurrentHashMap<Integer, Boolean> anomalyBatteryTempEnabled;
 
 
-    public ConcurrentHashMap<Integer, Boolean> getAnomalyVoltageDropEnabled() {
-        return anomalyVoltageDropEnabled;
+    public ConcurrentHashMap<Integer, Boolean> getAnomalyBatteryTempEnabled() {
+        return anomalyBatteryTempEnabled;
     }
 
     private void initializeApp() throws MqttException {
@@ -95,7 +95,7 @@ public class BatterySimulator {
         currentBatteryVoltage = new ConcurrentHashMap<>();
         currentAmbientTemperature = new ConcurrentHashMap<>();
         currentBatteryTemperature = new ConcurrentHashMap<>();
-        anomalyVoltageDropEnabled = new ConcurrentHashMap<>();
+        anomalyBatteryTempEnabled = new ConcurrentHashMap<>();
         speedEnergylookupTable = new TreeMap<>();
 
         // Lookup table data is from Tesla Model S (km/h : kw)
@@ -137,6 +137,11 @@ public class BatterySimulator {
         }
     }
 
+    public void addSimulationThread(int batteryId) {
+        initializeBatterySimulationData(batteryId);
+        scheduler.scheduleAtFixedRate(() -> simulateDrivingElectricVehicle(batteryId), 0, dataGenIntervall, TimeUnit.SECONDS);
+    }
+
     private void initializeBatterySimulationData(int batteryId){
         System.out.println("Initialize battery simulation for batteryId: "+batteryId);
 
@@ -146,7 +151,7 @@ public class BatterySimulator {
         currentSpeed.put(batteryId, wheelSpeedMax * 0.5);
         currentAmbientTemperature.put(batteryId, 18.3);
         currentBatteryTemperature.put(batteryId,25.4);
-        anomalyVoltageDropEnabled.put(batteryId, false);
+        anomalyBatteryTempEnabled.put(batteryId, false);
         currentLoad.put(batteryId, 100.0);
     }
 
@@ -214,7 +219,7 @@ public class BatterySimulator {
         double batteryCurrent = ((calculateEnergyConsumption(kmh) * 1000) + calculateRollingResistanceInWatt(wheelSpeed, dataGenIntervall, batteryId))/ currentBatteryVoltage.get(batteryId);
 
         // generate the battery temperature, voltage, degradation, 
-        batteryDataSimulation.simulateBatteryData(batteryCurrent, 1, currentStateOfCharge);
+        batteryDataSimulation.simulateBatteryData(batteryCurrent, 1, currentStateOfCharge, anomalyBatteryTempEnabled.get(batteryId));
 
         // get the state of health
         double stateOfHealth = batteryDataSimulation.getStateOfHealth();
@@ -222,13 +227,7 @@ public class BatterySimulator {
         // get the battery temperature
         double batteryTemperature = batteryDataSimulation.getBatteryTemperature();
 
-        // get the batteryVoltage
-        if (anomalyVoltageDropEnabled.get(batteryId)) {
-            //TODO: Implement anomaly behavior
-            currentBatteryVoltage.put(batteryId, currentBatteryVoltage.get(batteryId) - 2.83);
-        } else {
-            currentBatteryVoltage.put(batteryId, batteryDataSimulation.getVoltage());
-        }
+        currentBatteryVoltage.put(batteryId, batteryDataSimulation.getVoltage());
 
         // create the JSON string (payload)
         String payload = String.format(

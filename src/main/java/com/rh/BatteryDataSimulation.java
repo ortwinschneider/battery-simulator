@@ -31,7 +31,7 @@ public class BatteryDataSimulation {
         this.voltage = NOMINAL_VOLTAGE;
     }
 
-    public void simulateBatteryData(double current, int timeInterval, double stateOfCharge) {
+    public void simulateBatteryData(double current, int timeInterval, double stateOfCharge, boolean isBatteryTemperatureSensorFaulty) {
 
         if (!inThermalRunaway) {
             // Joule Heating: P = I^2 * R (Power loss due to internal resistance)
@@ -41,6 +41,10 @@ public class BatteryDataSimulation {
             double coolingEffect = (COOLING_RATE * timeInterval) * (batteryTemperature - INITIAL_TEMPERATURE);
             double temperatureChange = (HEATING_COEFFICIENT * powerDissipation) - coolingEffect;
             
+            if (isBatteryTemperatureSensorFaulty) {
+                // Simulate faulty sensor by adding random noise
+                temperatureChange = 2.965; // Random change between -2 and +2 °C
+            }
             batteryTemperature += temperatureChange;
 
             // State of Health Degradation
@@ -67,7 +71,7 @@ public class BatteryDataSimulation {
         } else {
             // **Thermal Runaway Mode**
             batteryTemperature *= RUNAWAY_MULTIPLIER; // Exponential temperature rise
-            stateOfHealth = 0;
+            
 
             // Voltage drop due to internal resistance
             double voltageDrop = current * INTERNAL_RESISTANCE;
@@ -78,6 +82,7 @@ public class BatteryDataSimulation {
             // Stop simulation if battery reaches failure temp
             if (batteryTemperature >= CRITICAL_FAILURE_TEMP) {
                 System.out.println("🔥 BATTERY FAILURE 🔥");
+                stateOfHealth = 0.0;
             }
         }
     }
