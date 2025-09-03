@@ -64,6 +64,7 @@ public class BatterySimulator {
     private MqttClient mqttClient;
     private ScheduledExecutorService scheduler;
     private ConcurrentHashMap<Integer, Double> currentBatteryCapacity;
+    private ConcurrentHashMap<Integer, Double> currentLoad;
     private ConcurrentHashMap<Integer, Double> currentDrivingDistance;
     private ConcurrentHashMap<Integer, Double> currentBatteryVoltage;
     private ConcurrentHashMap<Integer, Double> currentAmbientTemperature;
@@ -88,6 +89,7 @@ public class BatterySimulator {
         mqttClient.connect(options);
 
         currentBatteryCapacity = new ConcurrentHashMap<>();
+        currentLoad = new ConcurrentHashMap<>();
         currentDrivingDistance = new ConcurrentHashMap<>();
         currentSpeed = new ConcurrentHashMap<>();
         currentBatteryVoltage = new ConcurrentHashMap<>();
@@ -96,33 +98,33 @@ public class BatterySimulator {
         anomalyVoltageDropEnabled = new ConcurrentHashMap<>();
         speedEnergylookupTable = new TreeMap<>();
 
-        // Lookup table data is from Tesla Model S (km/h : kwh)
-        speedEnergylookupTable.put(0.0, 0.0);
-        speedEnergylookupTable.put(10.0, 2.0);
-        speedEnergylookupTable.put(20.0, 3.0);
-        speedEnergylookupTable.put(30.0, 4.1);
-        speedEnergylookupTable.put(40.0, 5.0);
-        speedEnergylookupTable.put(50.0, 6.3);
-        speedEnergylookupTable.put(60.0, 7.8);
-        speedEnergylookupTable.put(70.0, 10.0);
-        speedEnergylookupTable.put(80.0, 12.5);
-        speedEnergylookupTable.put(90.0, 15.0);
-        speedEnergylookupTable.put(100.0, 18.0);
-        speedEnergylookupTable.put(110.0, 23.0);
-        speedEnergylookupTable.put(120.0, 27.5);
-        speedEnergylookupTable.put(130.0, 32.0);
-        speedEnergylookupTable.put(140.0, 38.0);
-        speedEnergylookupTable.put(150.0, 45.0);
-        speedEnergylookupTable.put(160.0, 52.0);
-        speedEnergylookupTable.put(170.0, 60.0);
-        speedEnergylookupTable.put(180.0, 70.0);
-        speedEnergylookupTable.put(190.0, 81.0);
-        speedEnergylookupTable.put(200.0, 92.5);
-        speedEnergylookupTable.put(210.0, 104.0);
-        speedEnergylookupTable.put(220.0, 117.0);
-        speedEnergylookupTable.put(230.0, 133.0);
-        speedEnergylookupTable.put(240.0, 148.0);
-        speedEnergylookupTable.put(250.0, 162.0);
+        // Lookup table data is from Tesla Model S (km/h : kw)
+        speedEnergylookupTable.put(0.0, 0.048);
+        speedEnergylookupTable.put(1.0, 0.096);
+        speedEnergylookupTable.put(2.0, 0.144);
+        speedEnergylookupTable.put(3.0, 0.19);
+        speedEnergylookupTable.put(4.0, 0.236);
+        speedEnergylookupTable.put(5.0, 0.259);
+        speedEnergylookupTable.put(6.0, 0.288);
+        speedEnergylookupTable.put(7.0, 0.366);
+        speedEnergylookupTable.put(8.0, 0.430);
+        speedEnergylookupTable.put(9.0, 0.489);
+        speedEnergylookupTable.put(10.0, 0.500);
+        speedEnergylookupTable.put(11.0, 0.520);
+        speedEnergylookupTable.put(12.0, 0.570);
+        speedEnergylookupTable.put(13.0, 0.600);
+        speedEnergylookupTable.put(14.0, 0.650);
+        speedEnergylookupTable.put(15.0, 0.720);
+        speedEnergylookupTable.put(16.0, 0.776);
+        speedEnergylookupTable.put(17.0, 0.810);
+        speedEnergylookupTable.put(18.0, 0.860);
+        speedEnergylookupTable.put(19.0, 0.920);
+        speedEnergylookupTable.put(20.0, 0.960);
+        speedEnergylookupTable.put(21.0, 1.0);
+        speedEnergylookupTable.put(22.0, 1.056);
+        speedEnergylookupTable.put(23.0, 1.20);
+        speedEnergylookupTable.put(24.0, 1.35);
+        speedEnergylookupTable.put(25.0, 1.44);
 
         for (int i = 0; i < batteryCount; i++) {
             initializeBatterySimulationData(i+1);
@@ -145,6 +147,7 @@ public class BatterySimulator {
         currentAmbientTemperature.put(batteryId, 18.3);
         currentBatteryTemperature.put(batteryId,25.4);
         anomalyVoltageDropEnabled.put(batteryId, false);
+        currentLoad.put(batteryId, 100.0);
     }
 
     void onStart(@Observes StartupEvent event) {
@@ -171,14 +174,16 @@ public class BatterySimulator {
         double wheelSpeed = currentSpeed.get(batteryId);
 
         // generate the speed in meters per second and also use km/h
-        if (random.nextBoolean()) { 
-            wheelSpeed = currentSpeed.put(batteryId, currentSpeed.get(batteryId) + random.nextDouble(3));
+        if (random.nextBoolean()) {
+            wheelSpeed = currentSpeed.get(batteryId) + random.nextDouble(2); 
             if (wheelSpeed > wheelSpeedMax)
                 wheelSpeed = wheelSpeedMax;
+            currentSpeed.put(batteryId, wheelSpeed); 
         } else {
-            wheelSpeed = currentSpeed.put(batteryId, currentSpeed.get(batteryId) - random.nextDouble(3));
+            wheelSpeed = currentSpeed.get(batteryId) - random.nextDouble(2);
             if (wheelSpeed < 0)
-            wheelSpeed = 0.0; 
+                wheelSpeed = 0.0; 
+            currentSpeed.put(batteryId, wheelSpeed);     
         }
         
         // speed in km/h 
@@ -199,14 +204,14 @@ public class BatterySimulator {
         double energyConsumption = (calculateEnergyConsumption(kmh) / 3600) * dataGenIntervall;
 
         // Update the current battery capacity by subtracting the current energy consumption, rolling resistance and air resistance for the given time intervall
-        double current = currentBatteryCapacity.get(batteryId) - energyConsumption - calculateAirResistance(wheelSpeed, dataGenIntervall) - calculateRollingResistance(wheelSpeed, dataGenIntervall);
-        currentBatteryCapacity.put(batteryId, current);
+        double currentCapacity = currentBatteryCapacity.get(batteryId) - energyConsumption - calculateRollingResistance(wheelSpeed, dataGenIntervall, batteryId) - calculateAirResistance(wheelSpeed, dataGenIntervall);
+        currentBatteryCapacity.put(batteryId, currentCapacity);
 
         // Update the SOC in percentage
-        double currentStateOfCharge = current / batteryCapacity;
+        double currentStateOfCharge = currentCapacity / batteryCapacity;
 
         // calculate the current ampere based on the needed energy in Watt and current voltage
-        double batteryCurrent = (calculateEnergyConsumption(kmh) * 1000) / currentBatteryVoltage.get(batteryId);
+        double batteryCurrent = ((calculateEnergyConsumption(kmh) * 1000) + calculateRollingResistanceInWatt(wheelSpeed, dataGenIntervall, batteryId))/ currentBatteryVoltage.get(batteryId);
 
         // generate the battery temperature, voltage, degradation, 
         batteryDataSimulation.simulateBatteryData(batteryCurrent, 1, currentStateOfCharge);
@@ -227,8 +232,8 @@ public class BatterySimulator {
 
         // create the JSON string (payload)
         String payload = String.format(
-            "{\"batteryId\":%d,\"stateOfCharge\":%.4f,\"stateOfHealth\":%.4f,\"batteryCurrent\":%.2f,\"batteryVoltage\":%.2f,\"kmh\":%.2f,\"distance\":%.2f,\"batteryTemp\":%.2f,\"ambientTemp\":%.2f}",
-            batteryId, currentStateOfCharge, stateOfHealth, batteryCurrent, currentBatteryVoltage.get(batteryId), kmh, distance, batteryTemperature, ambientTemperature
+            "{\"batteryId\":%d,\"stateOfCharge\":%.4f,\"stateOfHealth\":%.4f,\"batteryCurrent\":%.2f,\"batteryVoltage\":%.2f,\"kmh\":%.2f,\"distance\":%.2f,\"batteryTemp\":%.2f,\"ambientTemp\":%.2f,\"currentLoad\":%.2f}",
+            batteryId, currentStateOfCharge, stateOfHealth, batteryCurrent, currentBatteryVoltage.get(batteryId), kmh, distance, batteryTemperature, ambientTemperature, currentLoad.get(batteryId)
         );
 
         System.out.println(payload);
@@ -261,11 +266,18 @@ public class BatterySimulator {
     }
 
     // The function is returning kwh
-    private double calculateRollingResistance(double speed, int timeInterval) {
+    private double calculateRollingResistance(double speed, int timeInterval, int batteryId) {
         // weight * base gravity * tire cr value
-        double rr = carWeight * 9.81 * carTireCr;
-        double rr_kwh = (rr * (speed * timeInterval )) / 3600000;
+        double rr = (carWeight + currentLoad.get(batteryId)) * 9.81 * carTireCr;
+        double rr_kwh = (rr * speed * timeInterval ) / 3600000;
         return rr_kwh;
+    }
+
+    private double calculateRollingResistanceInWatt(double speed, int timeInterval, int batteryId) {
+        // weight * base gravity * tire cr value
+        double rr = (carWeight + currentLoad.get(batteryId)) * 9.81 * carTireCr;
+        double rr_w = (rr * speed);
+        return rr_w;
     }
 
     // The function is returning kwh

@@ -16,8 +16,8 @@ public class BatteryDataSimulation {
     private final double BASE_DEGRADATION = 0.0001; // Normal degradation per second
     private final double HIGH_TEMP_DEGRADATION = 0.0005; // Extra degradation above 45°C
 
-    private final double NOMINAL_VOLTAGE = 400.0; // V
-    private final double MIN_VOLTAGE = 300.0; // Minimum voltage when fully discharged
+    private final double NOMINAL_VOLTAGE = 48.0; // V
+    private final double MIN_VOLTAGE = 32.0; // Minimum voltage when fully discharged
 
     private double batteryTemperature = INITIAL_TEMPERATURE;
     private boolean inThermalRunaway = false;
@@ -84,15 +84,15 @@ public class BatteryDataSimulation {
 
     // Simulate SOC vs Voltage curve (nonlinear)
     private double interpolateSOCVoltage(double soc) {
-        if (soc >= 0.9) return 400;
-        else if (soc >= 0.8) return 390;
-        else if (soc >= 0.7) return 380;
-        else if (soc >= 0.6) return 370;
-        else if (soc >= 0.5) return 360;
-        else if (soc >= 0.4) return 350;
-        else if (soc >= 0.3) return 340;
-        else if (soc >= 0.2) return 330;
-        else if (soc >= 0.1) return 320;
+        if (soc >= 0.9) return 48;
+        else if (soc >= 0.8) return 46;
+        else if (soc >= 0.7) return 45;
+        else if (soc >= 0.6) return 44;
+        else if (soc >= 0.5) return 42;
+        else if (soc >= 0.4) return 41;
+        else if (soc >= 0.3) return 40;
+        else if (soc >= 0.2) return 39;
+        else if (soc >= 0.1) return 38;
         else return MIN_VOLTAGE; // Fully discharged
     }
 
