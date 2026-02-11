@@ -66,7 +66,7 @@ Easily start your REST Web Services
 ```shell script
 ./mvnw package 
 
-podman build --platform=linux/amd64 -f src/main/docker/Dockerfile.jvm -t quay.io/oschneid/battery-simulator-jvm:1.0 .
+podman build --platform=linux/amd64 -f src/main/docker/Dockerfile.jvm -t quay.io/oschneid/battery-simulator-jvm:agv-1.0 .
 
-podman push quay.io/oschneid/battery-simulator-jvm:1.0
+podman push quay.io/oschneid/battery-simulator-jvm:agv-1.0
 ```
