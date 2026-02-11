@@ -78,6 +78,26 @@ public class BatterySimulator {
         return anomalyBatteryTempEnabled;
     }
 
+    public void restartBatterySimulation(int batteryId) {
+        this.initializeBatterySimulationData(batteryId);
+        batteryDataSimulation.initializeSimulationData();
+    }
+
+    public String getBatteryDataForId(int batteryId) {
+        return String.format(
+            "{\"batteryId\":%d,\"stateOfCharge\":%.4f,\"stateOfHealth\":%.4f,\"batteryVoltage\":%.2f,\"kmh\":%.2f,\"distance\":%.2f,\"batteryTemp\":%.2f,\"ambientTemp\":%.2f,\"currentLoad\":%.2f}",
+            batteryId, 
+            currentBatteryCapacity.get(batteryId) / batteryCapacity, 
+            batteryDataSimulation.getStateOfHealth(), 
+            currentBatteryVoltage.get(batteryId), 
+            currentSpeed.get(batteryId) * 3.6, 
+            currentDrivingDistance.get(batteryId), 
+            batteryDataSimulation.getBatteryTemperature(), 
+            currentAmbientTemperature.get(batteryId), 
+            currentLoad.get(batteryId)
+        );
+    }
+
     private void initializeApp() throws MqttException {
 
         MqttConnectOptions options = new MqttConnectOptions();

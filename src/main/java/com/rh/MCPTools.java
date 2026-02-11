@@ -21,4 +21,15 @@ public class MCPTools {
         this.batterySimulator.getAnomalyBatteryTempEnabled().put(batteryId, true);
         return "Enabled Battery temperature anomaly for batteryId: "+batteryId;
     }
+
+    @Tool(name="get-battery-data", description = "Retrieve current battery data, such as temperature, voltage, current for a battery simulation thread with a specific batteryId")
+    public String getBatteryData(@ToolArg(description = "The battery ID as Integer value") Integer batteryId) {
+        return this.batterySimulator.getBatteryDataForId(batteryId);
+    }
+
+    @Tool(name="restart-battery-simulation", description = "Restart a battery simulation thread with a specific batteryId")
+    public String restartBatterySimulation(@ToolArg(description = "The battery ID as Integer value") Integer batteryId) {
+        this.batterySimulator.restartBatterySimulation(batteryId);   
+        return "Restarted Battery simulation for batteryId: "+batteryId;
+    }
 }
